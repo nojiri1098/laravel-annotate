@@ -21,6 +21,7 @@ class AnnotateGenerateCommand extends Command
      */
     protected $description = '';
 
+    protected $models;
     protected $methodNames;
 
     protected $scopes    = [];
@@ -34,13 +35,17 @@ class AnnotateGenerateCommand extends Command
      */
     public function handle()
     {
-        $models = collect([
-            new \Nojiri1098\Annotate\User(),
+        $this->models = collect([
+            'user' => [
+                'object' => new \Nojiri1098\Annotate\User(),
+                'path' => __DIR__ . '/../User.php',
+            ],
         ]);
         
-        $models->each(function ($model, $key) {
-            $methodNames = get_class_methods($model);
+        $this->models->each(function ($model, $key) {
+            $methodNames = get_class_methods($model['object']);
             $this->extractMethods($methodNames);
+            $this->annotateMethods();
         });
     }
 
@@ -74,5 +79,42 @@ class AnnotateGenerateCommand extends Command
         }
 
         $this->info("Extracting relations...");
+    }
+
+    private function annotateMethods()
+    {
+        $annotation = [
+            "",
+            "/**",
+            "* scope ======================",
+        ];
+
+        foreach ($this->scopes as $scope) {
+            $annotation[] = "*   {$scope}";
+        }
+
+        $annotation[] = "* ";
+        $annotation[] = "* accessor ===================";
+        
+        foreach ($this->accessors as $accessor) {
+            $annotation[] = "*   {$accessor}";
+        }
+
+        $annotation[] = "* ";
+        $annotation[] = "* mutator ===================";
+        
+        foreach ($this->mutators as $mutator) {
+            $annotation[] =  "*   {$mutator}";
+        }
+
+        $annotation[] = "*/";
+
+        $this->models->each(function ($model, $key) use ($annotation) {
+            $file = \File::get($model['path']);
+            $lines = explode(PHP_EOL, $file);
+            // TODO: annotationがすでに存在する場合は上書きする
+            array_splice($lines, 1, 0, $annotation);
+            \File::put($model['path'], implode(PHP_EOL, $lines));
+        });
     }
 }
