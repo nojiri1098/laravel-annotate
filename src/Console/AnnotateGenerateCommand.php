@@ -21,6 +21,12 @@ class AnnotateGenerateCommand extends Command
      */
     protected $description = '';
 
+    protected $methodNames;
+
+    protected $scopes    = [];
+    protected $accessors = [];
+    protected $mutators  = [];
+
     /**
      * Execute the console command.
      *
@@ -28,33 +34,45 @@ class AnnotateGenerateCommand extends Command
      */
     public function handle()
     {
-        // exec("composer install");
-        // $this->call('vendor:publish', ['--provider' => 'Maatwebsite\Excel\ExcelServiceProvider']);
-        // $this->call('make:exception', ['name' => 'CsvImportException']);
+        $models = collect([
+            new \Nojiri1098\Annotate\User(),
+        ]);
         
-        $this->annotateScopes();
-        $this->annotateAccessors();
-        $this->annotateMutators();
-        $this->annotateRelations();
+        $models->each(function ($model, $key) {
+            $methodNames = get_class_methods($model);
+            $this->extractMethods($methodNames);
+        });
     }
 
-    private function annotateScopes()
+    private function extractMethods(array $methodNames)
     {
-        $this->info("Annotating scopes...");
-    }
+        $this->info("Extracting scopes...");
 
-    private function annotateAccessors()
-    {
-        $this->info("Annotating accessors...");
-    }
+        foreach ($methodNames as $method) {
+            preg_match('/^scope(.+)/', $method, $matches);
+            if (isset($matches[1])) {
+                $this->warn($this->scopes[] = Str::lower($matches[1]));
+            };
+        }
 
-    private function annotateMutators()
-    {
-        $this->info("Annotating mutators...");
-    }
+        $this->info("Extracting accessors...");
 
-    private function annotateRelations()
-    {
-        $this->info("Annotating relations...");
+        foreach ($methodNames as $method) {
+            preg_match('/^get(.+?)Attribute$/', $method, $matches);
+            if (isset($matches[1])) {
+                $this->warn($this->accessors[] = Str::snake($matches[1]));
+            };
+        }
+
+        $this->info("Extracting mutators...");
+
+        foreach ($methodNames as $method) {
+            preg_match('/^set(.+?)Attribute$/', $method, $matches);
+            if (isset($matches[1])) {
+                $this->warn($this->mutators[] = Str::snake($matches[1]));
+            };
+        }
+
+        $this->info("Extracting relations...");
     }
 }
