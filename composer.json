@@ -1,0 +1,28 @@
+{
+    "name": "nojiri1098/laravel-annotate",
+    "description": "Add a method list of scopes, accessors, mutators, relations and so on to top of each model file.",
+    "type": "library",
+    "require": {
+        "php": "^7.0",
+        "laravel/framework": "^5.5"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Daiki",
+            "email": "nojiri1098@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Nojiri1098\\Annotate\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Nojiri1098\\Annotate\\ServiceProvider"
+            ]
+        }
+    }
+}
