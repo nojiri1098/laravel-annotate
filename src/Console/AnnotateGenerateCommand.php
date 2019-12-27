@@ -4,6 +4,7 @@ namespace Nojiri1098\Annotate\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class AnnotateGenerateCommand extends Command
 {
@@ -45,50 +46,42 @@ class AnnotateGenerateCommand extends Command
      */
     public function handle()
     {
-        $this->models = collect([
-            'user' => [
-                'object' => new \Nojiri1098\Annotate\User(),
-                'path' => __DIR__ . '/../User.php',
-            ],
-        ]);
+        $this->models = collect(glob(app_path('*.php')));
         
         $this->models->each(function ($model, $key) {
-            $methodNames = get_class_methods($model['object']);
-            $this->extractMethods($methodNames);
+            $this->extractMethods();
             $this->annotateMethods();
         });
     }
 
-    private function extractMethods(array $methodNames)
+    private function extractMethods()
     {
-        $this->info("Extracting scopes...");
+        $this->models->each(function ($model, $key) {
+            $file = \File::get($model);
 
-        foreach ($methodNames as $method) {
-            preg_match('/^scope(.+)/', $method, $matches);
-            if (isset($matches[1])) {
-                $this->warn($this->scopes[] = Str::lower($matches[1]));
-            };
-        }
+            $this->info("Extracting scopes...");
 
-        $this->info("Extracting accessors...");
+            preg_match_all('/public function scope(.+)\(\)/', $file, $matches);
+            foreach ($matches[1] as $scope) {
+                $this->scopes[] = Str::lower($scope);
+            }
 
-        foreach ($methodNames as $method) {
-            preg_match('/^get(.+?)Attribute$/', $method, $matches);
-            if (isset($matches[1])) {
-                $this->warn($this->accessors[] = Str::snake($matches[1]));
-            };
-        }
+            $this->info("Extracting accessors...");
 
-        $this->info("Extracting mutators...");
+            preg_match_all('/public function get(.+)Attribute\(\)/', $file, $matches);
+            foreach ($matches[1] as $accessor) {
+                $this->accessors[] = Str::snake($accessor);
+            }
 
-        foreach ($methodNames as $method) {
-            preg_match('/^set(.+?)Attribute$/', $method, $matches);
-            if (isset($matches[1])) {
-                $this->warn($this->mutators[] = Str::snake($matches[1]));
-            };
-        }
+            $this->info("Extracting mutators...");
 
-        $this->info("Extracting relations...");
+            preg_match_all('/public function set(.+)Attribute\(\)/', $file, $matches);
+            foreach ($matches[1] as $mutator) {
+                $this->mutators[] = Str::snake($mutator);
+            }
+
+            $this->info("Extracting relations...");
+        });
     }
 
     private function annotateMethods()
@@ -120,14 +113,14 @@ class AnnotateGenerateCommand extends Command
         $annotation[] = self::END;
 
         $this->models->each(function ($model, $key) use ($annotation) {
-            $file = \File::get($model['path']);
+            $file = \File::get($model);
 
             // annotation がすでにあれば削除する
             $file = preg_replace('/\/\*\*.+========.+?\*\/\n\n/s', '', $file);
 
             $lines = explode(PHP_EOL, $file);
             array_splice($lines, 1, 0, $annotation);
-            \File::put($model['path'], implode(PHP_EOL, $lines));
+            \File::put($model, implode(PHP_EOL, $lines));
         });
     }
 }
