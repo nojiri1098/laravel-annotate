@@ -121,8 +121,11 @@ class AnnotateGenerateCommand extends Command
 
         $this->models->each(function ($model, $key) use ($annotation) {
             $file = \File::get($model['path']);
+
+            // annotation がすでにあれば削除する
+            $file = preg_replace('/\/\*\*.+========.+?\*\/\n\n/s', '', $file);
+
             $lines = explode(PHP_EOL, $file);
-            // TODO: annotationがすでに存在する場合は上書きする
             array_splice($lines, 1, 0, $annotation);
             \File::put($model['path'], implode(PHP_EOL, $lines));
         });
