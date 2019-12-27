@@ -28,6 +28,16 @@ class AnnotateGenerateCommand extends Command
     protected $accessors = [];
     protected $mutators  = [];
 
+    const START  = '/**';
+    const DELIM  = ' * ';
+    const BODY   = ' *   ';
+    const END    = ' */';
+    const HEADER = [
+        'scope'    => ' * scope ======================',
+        'accessor' => ' * accessor ===================',
+        'mutator'  => ' * mutator ====================',
+    ];
+
     /**
      * Execute the console command.
      *
@@ -85,29 +95,29 @@ class AnnotateGenerateCommand extends Command
     {
         $annotation = [
             "",
-            "/**",
-            "* scope ======================",
+            self::START,
+            self::HEADER['scope'],
         ];
 
         foreach ($this->scopes as $scope) {
-            $annotation[] = "*   {$scope}";
+            $annotation[] = self::BODY . $scope;
         }
 
-        $annotation[] = "* ";
-        $annotation[] = "* accessor ===================";
+        $annotation[] = self::DELIM;
+        $annotation[] = self::HEADER['accessor'];
         
         foreach ($this->accessors as $accessor) {
-            $annotation[] = "*   {$accessor}";
+            $annotation[] = self::BODY . $accessor;
         }
 
-        $annotation[] = "* ";
-        $annotation[] = "* mutator ===================";
+        $annotation[] = self::DELIM;
+        $annotation[] = self::HEADER['mutator'];
         
         foreach ($this->mutators as $mutator) {
-            $annotation[] =  "*   {$mutator}";
+            $annotation[] =  self::BODY . $mutator;
         }
 
-        $annotation[] = "*/";
+        $annotation[] = self::END;
 
         $this->models->each(function ($model, $key) use ($annotation) {
             $file = \File::get($model['path']);
