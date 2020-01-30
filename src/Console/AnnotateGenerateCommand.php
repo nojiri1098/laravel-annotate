@@ -49,78 +49,78 @@ class AnnotateGenerateCommand extends Command
         $this->models = collect(glob(app_path('*.php')));
         
         $this->models->each(function ($model, $key) {
-            $this->extractMethods();
-            $this->annotateMethods();
+            $this->extractMethods($model);
+            $this->annotateMethods($model);
         });
     }
 
-    private function extractMethods()
+    private function extractMethods($model)
     {
-        $this->models->each(function ($model, $key) {
-            $file = \File::get($model);
+        $file = \File::get($model);
 
-            $this->info("Extracting scopes...");
+        $this->info("Extracting scopes...");
 
-            preg_match_all('/public function scope(.+)\(\)/', $file, $matches);
-            foreach ($matches[1] as $scope) {
-                $this->scopes[] = Str::lower($scope);
-            }
+        preg_match_all('/public function scope(.+)\(/', $file, $matches);
+        foreach ($matches[1] as $scope) {
+            $this->scopes[] = Str::lower($scope);
+        }
 
-            $this->info("Extracting accessors...");
+        $this->info("Extracting accessors...");
 
-            preg_match_all('/public function get(.+)Attribute\(\)/', $file, $matches);
-            foreach ($matches[1] as $accessor) {
-                $this->accessors[] = Str::snake($accessor);
-            }
+        preg_match_all('/public function get(.+)Attribute\(/', $file, $matches);
+        foreach ($matches[1] as $accessor) {
+            $this->accessors[] = Str::snake($accessor);
+        }
 
-            $this->info("Extracting mutators...");
+        $this->info("Extracting mutators...");
 
-            preg_match_all('/public function set(.+)Attribute\(\)/', $file, $matches);
-            foreach ($matches[1] as $mutator) {
-                $this->mutators[] = Str::snake($mutator);
-            }
+        preg_match_all('/public function set(.+)Attribute\(/', $file, $matches);
+        foreach ($matches[1] as $mutator) {
+            $this->mutators[] = Str::snake($mutator);
+        }
 
-            $this->info("Extracting relations...");
-        });
+        $this->info("Extracting relations...");
     }
 
-    private function annotateMethods()
+    private function annotateMethods($model)
     {
         $annotation = [
             "",
             self::START,
-            self::HEADER['scope'],
         ];
 
-        foreach ($this->scopes as $scope) {
-            $annotation[] = self::BODY . $scope;
+        if (! empty($this->scopes)) {
+            $annotation[] = self::HEADER['scope'];
+            foreach ($this->scopes as $scope) {
+                $annotation[] = self::BODY . $scope;
+            }
+            $annotation[] = self::DELIM;
         }
 
-        $annotation[] = self::DELIM;
-        $annotation[] = self::HEADER['accessor'];
+        if (! empty($this->accessors)) {
+            $annotation[] = self::HEADER['accessor'];
+            foreach ($this->accessors as $accessor) {
+                $annotation[] = self::BODY . $accessor;
+            }
+            $annotation[] = self::DELIM;
+        }
+
+        if (! empty($this->mutators)) {
+            $annotation[] = self::HEADER['mutator'];
+            foreach ($this->mutators as $mutator) {
+                $annotation[] =  self::BODY . $mutator;
+            }
+        }
         
-        foreach ($this->accessors as $accessor) {
-            $annotation[] = self::BODY . $accessor;
-        }
-
-        $annotation[] = self::DELIM;
-        $annotation[] = self::HEADER['mutator'];
-        
-        foreach ($this->mutators as $mutator) {
-            $annotation[] =  self::BODY . $mutator;
-        }
-
         $annotation[] = self::END;
+        
+        $file = \File::get($model);
 
-        $this->models->each(function ($model, $key) use ($annotation) {
-            $file = \File::get($model);
+        // annotation がすでにあれば削除する
+        $file = preg_replace('/\/\*\*.+========.+?\*\/\n\n/s', '', $file);
 
-            // annotation がすでにあれば削除する
-            $file = preg_replace('/\/\*\*.+========.+?\*\/\n\n/s', '', $file);
-
-            $lines = explode(PHP_EOL, $file);
-            array_splice($lines, 1, 0, $annotation);
-            \File::put($model, implode(PHP_EOL, $lines));
-        });
+        $lines = explode(PHP_EOL, $file);
+        array_splice($lines, 1, 0, $annotation);
+        \File::put($model, implode(PHP_EOL, $lines));
     }
 }
